@@ -135,27 +135,24 @@ const _sendToParentTracker = (eventType, eventDetails, data) => {
         try {
             switch (eventType) {
                 case 'imageLoad':
-                //    neon.parentTracker.sendImageLoadEventByUrl(
-                //        data.vid, eventDetails.images[0]);
+                //    neon.parentTracker.tracker.sendImageLoadEventByUrl();
                 //    return true;
                 case 'imageView':
-                //    neon.parentTracker.sendImageViewEventByUrl(
-                //        data.vid, eventDetails.images[0]);
+                //    neon.parentTracker.tracker.sendImageViewEventByUrl();
                 //    return true;
                 case 'imageClick':
-                    neon.parentTracker.sendImageClickEventByUrl(
+                    neon.parentTracker.tracker.sendImageClickEventByUrl(
                         data.vid, eventDetails.images[0].url);
                     return true;
                 case 'autoplay':
                 case 'play':
-                //    neon.parentTracker.sendVideoPlayEventByUrl(
-                //        data.vid, eventDetails.images[0]);
+                //    neon.parentTracker.tracker.sendVideoPlayEventByUrl();
                 //    return true;
                 case 'adPlay':
-                //    neon.parentTracker.sendAdPlayEventByUrl(
-                //        data.vid, eventDetails.images[0]);
+                //    neon.parentTracker.tracker.sendAdPlayEventByUrl();
                 //    return true;
                 case 'timeUpdate':
+                    // TODO appears missing in the api.
                     break;
             }
             // Success.
@@ -436,12 +433,6 @@ const _getParentTracker = () => {
     return null;
 };
 
-// Handle the parent tracker ready
-const onParentTrackerReady = () => {
-    // Store a reference to the page's Neon tracker if findable
-    neon.parentTracker = _getParentTracker();
-};
-
 const _setPublisherId = () => {
 
     const parentId = window.neonPublisherId;
@@ -459,6 +450,30 @@ const _setPublisherId = () => {
     }
 };
 
+// Extract the current video id from the player and send to the parent
+// tracker if it is set.
+// @TODO this doesn't work well with the lazily loaded parent yet.
+const _setCurrentVid = () => {
+    const newVideoId = _extractVideoId();
+    if (newVideoId !== neon.currentVid) {
+        neon.currentVid = newVideoId;
+        if (neon.parentTracker) {
+            try {
+                neon.parentTracker.tracker.addVideoId(neon.currentVid);
+            } catch (err) {
+                console.error('Could not add video to parent tracker', err);
+            }
+        }
+    }
+};
+
+// Handle the parent tracker ready
+const onParentTrackerReady = () => {
+    // Store a reference to the page's Neon tracker if findable
+    neon.parentTracker = _getParentTracker();
+    _setCurrentVid();
+};
+
 // Handle the video.js ready event
 const onPlayerReady = (player_, options) => {
 
@@ -469,6 +484,7 @@ const onPlayerReady = (player_, options) => {
 
     // Wire up to the page's parent tracker if present
     neon.parentTracker = null;
+
     // @TODO see if the lazy loader has an event to listen on
     setTimeout(onParentTrackerReady, 1000);
 
@@ -488,6 +504,7 @@ const onPlayerReady = (player_, options) => {
     neon.playedVids = [];
     neon.percentsPlayed = {};
     neon.hasAdPlayed = false;
+    _setCurrentVid();
 
     // If the poster is set, track as though it had just changed
     if (player.poster()) {
