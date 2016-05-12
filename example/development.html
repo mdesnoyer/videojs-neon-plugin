@@ -13,7 +13,6 @@
         class="video-js vjs-default-skin"
         poster="https://upload.wikimedia.org/wikipedia/commons/6/64/Cavendish_Henry_signature.jpg"
         controls
-        autoplay
         muted>
         <source src="//vjs.zencdn.net/v/oceans.mp4" type="video/mp4">
         <source src="//vjs.zencdn.net/v/oceans.webm" type="video/webm">
@@ -21,6 +20,10 @@
     <ul>
         <li><a href="/test/">Run unit tests in browser.</a></li>
     </ul>
+    <script>
+        var neonPublisherId = '123456789';
+    </script>
+    <script src='//neon-test.s3.amazonaws.com/neonoptimizer_dixon.js'></script>
     <script src="/node_modules/video.js/dist/video.min.js"></script>
     <script src="/dist/videojs-neon-tracker.js"></script>
     <script src="http://players.brightcove.net/videojs-ima3/2/videojs.ima3.min.js"></script>
@@ -32,7 +35,6 @@
                 publisher: {
                     // Neon's tracking account id; inject via compilation step
                     // publisherId: {{publisherId}},
-                    id: '56139847',
                     // The attribute of the videojs video tag with a value that is
                     // unique to and identifies this video
                     videoIdAttribute: 'data-video-id',

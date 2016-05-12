@@ -88,24 +88,6 @@ const _getBasenameOf = (url) => {
     return url.replace(_basenameRegex, '');
 };
 
-const _isNeonImage = (url) => {
-    return (url && (
-        url.indexOf('neontn') > -1 || url.indexOf('neonvid') > -1));
-};
-
-const _getNeonThumbIdOf = (url) => {
-
-    if (neon.options.dev.showConsoleLogging) {
-        console.info(printf('%s -> %s', url, ''));
-    }
-    // reqwest({
-    //     url: neon.options.tracking.neonGetThumbnailIdUrl,
-    //     method: 'GET',
-    //     crossOrigin: true,
-    //     data
-    // });
-};
-
 // Calculate the percentage of the video played
 const _getPercentPlayed = () => {
     const currentTime = Math.round(player.currentTime());
@@ -141,6 +123,49 @@ const _trackerAllowedParams = [
     'ttype',
     'vid'
 ];
+
+const _sendToParentTracker = (eventType, eventDetails, data) => {
+    if (neon.parentTracker) {
+        // sendImageClickEventByUrl: function(vid, url, wx, wy, px, py, cx, cy)
+        // sendVideoPlayEvent: function(vid, tid, playerId, adPlay, adelta, pcount)
+        // sendAdPlayEvent: function(vid, tid, playerId, adelta, pcount, adTs)
+        // sendImagesVisibleEvent: function(imageMap)
+        // sendImagesLoadedEvent: function(imageMap, imSizeMap)
+        // sendVideoClickEvent: function(vid, tid, playerId)
+        try {
+            switch (eventType) {
+                case 'imageLoad':
+                //    neon.parentTracker.sendImageLoadEventByUrl(
+                //        data.vid, eventDetails.images[0]);
+                //    return true;
+                case 'imageView':
+                //    neon.parentTracker.sendImageViewEventByUrl(
+                //        data.vid, eventDetails.images[0]);
+                //    return true;
+                case 'imageClick':
+                    neon.parentTracker.sendImageClickEventByUrl(
+                        data.vid, eventDetails.images[0].url);
+                    return true;
+                case 'autoplay':
+                case 'play':
+                //    neon.parentTracker.sendVideoPlayEventByUrl(
+                //        data.vid, eventDetails.images[0]);
+                //    return true;
+                case 'adPlay':
+                //    neon.parentTracker.sendAdPlayEventByUrl(
+                //        data.vid, eventDetails.images[0]);
+                //    return true;
+                case 'timeUpdate':
+                    break;
+            }
+            // Success.
+        } catch (err) {
+            // Log and continue on to direct call.
+            console.error('Fail to send event via parent tracker', err, eventType, data);
+        }
+    }
+    return false;
+};
 
 // Run a ajax request for the log data
 const _sendToTracker = (eventType, eventDetails) => {
@@ -179,7 +204,8 @@ const _sendToTracker = (eventType, eventDetails) => {
         console.info(printf('%s -> %s', eventType, action), data);
     }
 
-    reqwest({
+    // Try to send via parent tracker but fallback to sending direct.
+    _sendToParentTracker(eventType, eventDetails, data) || reqwest({
         url: neon.options.tracking.neonApiUrl,
         method: 'GET',
         crossOrigin: true,
@@ -296,9 +322,11 @@ const _getImagesForEvent = (playerEvent) => {
 const _commonImageTrack = (type, playerEvent, eventDetails) => {
 
     eventDetails = eventDetails || {};
-    const images = _getImagesForEvent(eventDetails);
+    eventDetails.images = _getImagesForEvent(eventDetails);
 
-    if (images.length === 0) {
+    neon.currentVid = _extractVideoId();
+
+    if (eventDetails.images.length === 0) {
         console.error(
             'Abort log player image ' + type + ' event: not enough info to continue');
         return;
@@ -306,9 +334,9 @@ const _commonImageTrack = (type, playerEvent, eventDetails) => {
 
     if (type === 'imageClick') {
         // Unlike the other image tracking event formats, the bn includes no dimension
-        eventDetails.bn = _getBasenameOf(images[0].url);
+        eventDetails.bn = _getBasenameOf(eventDetails.images[0].url);
     } else {
-        eventDetails.bns = _buildBnsParamFromList(images);
+        eventDetails.bns = _buildBnsParamFromList(eventDetails.images);
     }
     _commonTrack(type, eventDetails);
 };
@@ -360,8 +388,18 @@ const onTimeUpdate = (playerEvent) => {
     }
 };
 
-// Get a relatively unique random identifier
-const _uuid = () => {
+// Get or generate an identifier for this pageload
+const _getPageLoadId = () => {
+
+    // Use the parent tracker's page id if available.
+    try {
+        if (neon.parentTracker) {
+            return neon.parentTracker.TrackerEvents.getPageLoadId();
+        }
+    } catch (err) {
+        console.error('Found parent neon module but could not get page load id!', err);
+    }
+
     const randomString = (length, chars) => {
         let result = '';
 
@@ -391,6 +429,36 @@ const onPosterChange = (playerEvent) => {
     }
 };
 
+const _getParentTracker = () => {
+    if (window._neon) {
+        return window._neon;
+    }
+    return null;
+};
+
+// Handle the parent tracker ready
+const onParentTrackerReady = () => {
+    // Store a reference to the page's Neon tracker if findable
+    neon.parentTracker = _getParentTracker();
+};
+
+const _setPublisherId = () => {
+
+    const parentId = window.neonPublisherId;
+    const pluginId = neon.options.publisher.id;
+
+    // Use the parent's publisher id if available
+    if (parentId) {
+        if (pluginId && parentId !== pluginId) {
+            console.warn(printf(
+                'Publisher id do not match: parent:%s plugin:%s',
+                parentId,
+                pluginId));
+        }
+        neon.options.publisher.id = window.neonPublisherId;
+    }
+};
+
 // Handle the video.js ready event
 const onPlayerReady = (player_, options) => {
 
@@ -399,9 +467,16 @@ const onPlayerReady = (player_, options) => {
 
     neon.options = options;
 
+    // Wire up to the page's parent tracker if present
+    neon.parentTracker = null;
+    // @TODO see if the lazy loader has an event to listen on
+    setTimeout(onParentTrackerReady, 1000);
+
+    _setPublisherId();
+
     neon.pageData = {
         // Fixed page idents
-        pageid: _uuid(),
+        pageid: _getPageLoadId(),
         page: _getPageUrl(),
         // Publisher id
         tai: options.publisher.id,
