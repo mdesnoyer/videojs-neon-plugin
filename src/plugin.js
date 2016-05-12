@@ -49,7 +49,11 @@ const defaults = {
             'play',
             'adPlay',
             'timeUpdate'
-        ]
+        ],
+
+        // How long in milliseconds to wait before sending first requests
+        // via parent tracker
+        waitForParentMillis: 5000
     },
 
     // Development options
@@ -124,43 +128,130 @@ const _trackerAllowedParams = [
     'vid'
 ];
 
-const _sendToParentTracker = (eventType, eventDetails, data) => {
-    if (neon.parentTracker) {
-        // sendImageClickEventByUrl: function(vid, url, wx, wy, px, py, cx, cy)
-        // sendVideoPlayEvent: function(vid, tid, playerId, adPlay, adelta, pcount)
-        // sendAdPlayEvent: function(vid, tid, playerId, adelta, pcount, adTs)
-        // sendImagesVisibleEvent: function(imageMap)
-        // sendImagesLoadedEvent: function(imageMap, imSizeMap)
-        // sendVideoClickEvent: function(vid, tid, playerId)
+// Calculate how many milliseconds until we stop waiting for the parent
+// or return false.
+const _getTimeoutForParent = () => {
+    const timeout = neon.readyTime + neon.options.tracking.waitForParentMillis -
+       (new Date()).getTime();
+
+    if (timeout > 0) {
+        return timeout;
+    }
+    return false;
+};
+
+const _getParentTracker = () => {
+    if (window._neon) {
+        neon.parentTracker = window._neon;
+        return neon.parentTracker;
+    }
+    return null;
+};
+
+const _trackerSendImageLoadedEventByUrl = (eventType, eventDetails, data) => {
+    if (_getParentTracker()) {
         try {
-            switch (eventType) {
-                case 'imageLoad':
-                //    neon.parentTracker.tracker.sendImageLoadEventByUrl();
-                //    return true;
-                case 'imageView':
-                //    neon.parentTracker.tracker.sendImageViewEventByUrl();
-                //    return true;
-                case 'imageClick':
-                    neon.parentTracker.tracker.sendImageClickEventByUrl(
-                        data.vid, eventDetails.images[0].url);
-                    return true;
-                case 'autoplay':
-                case 'play':
-                //    neon.parentTracker.tracker.sendVideoPlayEventByUrl();
-                //    return true;
-                case 'adPlay':
-                //    neon.parentTracker.tracker.sendAdPlayEventByUrl();
-                //    return true;
-                case 'timeUpdate':
-                    // TODO appears missing in the api.
-                    break;
+            if (neon.options.dev.showConsoleLogging) {
+                console.info(printf('via parent:%s', eventType), data);
             }
-            // Success.
+            neon.parentTracker.TrackerEvents.sendImageLoadedEventByUrl(
+                eventDetails.images[0].url,
+                eventDetails.images[0].width,
+                eventDetails.images[0].height);
+            return true;
         } catch (err) {
-            // Log and continue on to direct call.
             console.error('Fail to send event via parent tracker', err, eventType, data);
+            return false;
         }
     }
+    // Retry after timeout
+    const timeout = _getTimeoutForParent();
+
+    if (timeout) {
+        setTimeout(_sendToTracker, timeout, eventType, eventDetails);
+        return true;
+    }
+    return false;
+};
+
+const _trackerSendImageVisibleEventByUrl = (eventType, eventDetails, data, expired) => {
+    // @TODO need to look at sending as a list
+    if (_getParentTracker()) {
+        try {
+            if (neon.options.dev.showConsoleLogging) {
+                console.info(printf('via parent:%s', eventType), data);
+            }
+            neon.parentTracker.TrackerEvents.sendImageVisibleEventByUrl(
+                eventDetails.images[0].url);
+            return true;
+        } catch (err) {
+            console.error('Fail to send event via parent tracker', err, eventType, data);
+            return false;
+        }
+    }
+    const timeout = _getTimeoutForParent();
+
+    if (timeout) {
+        setTimeout(_sendToTracker, timeout, eventType, eventDetails);
+        return true;
+    }
+    return false;
+};
+
+const _trackerSendImageClickEventByUrl = (eventType, eventDetails, data) => {
+    if (_getParentTracker()) {
+        try {
+            if (neon.options.dev.showConsoleLogging) {
+                console.info(printf('via parent:%s', eventType), data);
+            }
+            neon.parentTracker.TrackerEvents.sendImageClickEventByUrl(
+                data.vid,
+                eventDetails.images[0].url);
+            return true;
+        } catch (err) {
+            console.error('Fail to send event via parent tracker', err, eventType, data);
+            return false;
+        }
+    }
+    const timeout = _getTimeoutForParent();
+
+    if (timeout) {
+        setTimeout(_sendToTracker, timeout, eventType, eventDetails);
+        console.info('click ' + timeout);
+        return true;
+    }
+    return false;
+};
+
+const _sendToParentTracker = (eventType, eventDetails, data) => {
+
+    // @TODO Implement missing wx, etc positional arguments.
+    // @TODO switch to simplier control flow. objects/dynamic calls
+
+    // If the tracker is found, or we are waiting for it, then send.
+    const timeout = _getTimeoutForParent();
+
+    if (_getParentTracker() || timeout) {
+        switch (eventType) {
+            case 'imageLoad':
+                return _trackerSendImageLoadedEventByUrl(
+                    eventType, eventDetails, data);
+            case 'imageView':
+                return _trackerSendImageVisibleEventByUrl(
+                    eventType, eventDetails, data);
+            case 'imageClick':
+                return _trackerSendImageClickEventByUrl(
+                    eventType, eventDetails, data);
+            case 'autoplay':
+            case 'play':
+            //    return _tracker()
+            case 'adPlay':
+            //    return _tracker()
+            case 'timeUpdate':
+            //    return _tracker()
+        }
+    }
+    // Fail back to sending directly.
     return false;
 };
 
@@ -197,12 +288,14 @@ const _sendToTracker = (eventType, eventDetails) => {
         // And filter unrecognized params
     ), _trackerAllowedParams);
 
-    if (neon.options.dev.showConsoleLogging) {
-        console.info(printf('%s -> %s', eventType, action), data);
-    }
-
     // Try to send via parent tracker but fallback to sending direct.
-    _sendToParentTracker(eventType, eventDetails, data) || reqwest({
+    if(_sendToParentTracker(eventType, eventDetails, data)) {
+        return;
+    }
+    if (neon.options.dev.showConsoleLogging) {
+        console.info(printf('direct:%s -> %s', eventType, action), data);
+    }
+    return reqwest({
         url: neon.options.tracking.neonApiUrl,
         method: 'GET',
         crossOrigin: true,
@@ -390,7 +483,7 @@ const _getPageLoadId = () => {
 
     // Use the parent tracker's page id if available.
     try {
-        if (neon.parentTracker) {
+        if (_getParentTracker()) {
             return neon.parentTracker.TrackerEvents.getPageLoadId();
         }
     } catch (err) {
@@ -426,13 +519,6 @@ const onPosterChange = (playerEvent) => {
     }
 };
 
-const _getParentTracker = () => {
-    if (window._neon) {
-        return window._neon;
-    }
-    return null;
-};
-
 const _setPublisherId = () => {
 
     const parentId = window.neonPublisherId;
@@ -450,28 +536,31 @@ const _setPublisherId = () => {
     }
 };
 
-// Extract the current video id from the player and send to the parent
-// tracker if it is set.
-// @TODO this doesn't work well with the lazily loaded parent yet.
-const _setCurrentVid = () => {
-    const newVideoId = _extractVideoId();
-    if (newVideoId !== neon.currentVid) {
-        neon.currentVid = newVideoId;
-        if (neon.parentTracker) {
-            try {
-                neon.parentTracker.tracker.addVideoId(neon.currentVid);
-            } catch (err) {
-                console.error('Could not add video to parent tracker', err);
-            }
+const _addParentTrackerVideoId = (id) => {
+    if (_getParentTracker()) {
+        try {
+            neon.parentTracker.tracker.addVideoId(id);
+        } catch (err) {
+            console.error('Could not add video to parent tracker', err);
         }
     }
 };
 
-// Handle the parent tracker ready
-const onParentTrackerReady = () => {
-    // Store a reference to the page's Neon tracker if findable
-    neon.parentTracker = _getParentTracker();
-    _setCurrentVid();
+// Extract the current video id from the player and send to the parent
+// tracker if it is set.
+const _setCurrentVid = () => {
+    const newVideoId = _extractVideoId();
+
+    if (newVideoId !== neon.currentVid) {
+        neon.currentVid = newVideoId;
+        const timeout = _getTimeoutForParent();
+
+        if (_getParentTracker()) {
+            _addParentTrackerVideoId(neon.currentVid);
+        } else if (timeout) {
+            setTimeout(_addParentTrackerVideoId, timeout, neon.currentVid);
+        }
+    }
 };
 
 // Handle the video.js ready event
@@ -481,12 +570,7 @@ const onPlayerReady = (player_, options) => {
     neon = player.neon;
 
     neon.options = options;
-
-    // Wire up to the page's parent tracker if present
-    neon.parentTracker = null;
-
-    // @TODO see if the lazy loader has an event to listen on
-    setTimeout(onParentTrackerReady, 1000);
+    neon.readyTime = (new Date()).getTime();
 
     _setPublisherId();
 
