@@ -151,6 +151,7 @@ const _getParentTracker = () => {
 // Get the url without url parameters or hash
 const _baseUrl = (url) => {
     const a = document.createElement('a');
+    a.href = url
     return printf('%s//%s%s', a.protocol, a.hostname, a.pathname);
 };
 
