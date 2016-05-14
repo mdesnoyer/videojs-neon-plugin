@@ -148,6 +148,12 @@ const _getParentTracker = () => {
     return null;
 };
 
+// Get the url without url parameters or hash
+const _baseUrl = (url) => {
+    const a = document.createElement('a');
+    return printf('%s//%s%s', a.protocol, a.hostname, a.pathname);
+};
+
 const _trackerSendImageLoadedEventByUrl = (eventType, eventDetails, data) => {
     if (_getParentTracker()) {
         try {
@@ -155,7 +161,7 @@ const _trackerSendImageLoadedEventByUrl = (eventType, eventDetails, data) => {
                 console.info(printf('via parent:%s', eventType), data);
             }
             neon.parentTracker.TrackerEvents.sendImageLoadedEventByUrl(
-                eventDetails.images[0].url,
+                _baseUrl(eventDetails.images[0].url),
                 eventDetails.images[0].width,
                 eventDetails.images[0].height);
             return true;
@@ -182,7 +188,7 @@ const _trackerSendImageVisibleEventByUrl = (eventType, eventDetails, data, expir
                 console.info(printf('via parent:%s', eventType), data);
             }
             neon.parentTracker.TrackerEvents.sendImageVisibleEventByUrl(
-                eventDetails.images[0].url);
+                _baseUrl(eventDetails.images[0].url));
             return true;
         } catch (err) {
             console.error('Fail to send event via parent tracker', err, eventType, data);
@@ -206,7 +212,7 @@ const _trackerSendImageClickEventByUrl = (eventType, eventDetails, data) => {
             }
             neon.parentTracker.TrackerEvents.sendImageClickEventByUrl(
                 data.vid,
-                eventDetails.images[0].url);
+                _baseUrl(eventDetails.images[0].url));
             return true;
         } catch (err) {
             console.error('Fail to send event via parent tracker', err, eventType, data);
