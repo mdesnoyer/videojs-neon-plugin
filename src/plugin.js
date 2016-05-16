@@ -510,9 +510,7 @@ const onPosterChange = (playerEvent) => {
 
     // And first play event as a image click for the poster
     // if the video is not configured for autoplay.
-    if (!player.autoplay()) {
-        player.one('play', onImageClick);
-    }
+    player.one('play', onImageClick);
 };
 
 const _setPublisherId = () => {
@@ -586,14 +584,15 @@ const onPlayerReady = (player_, options) => {
     neon.hasAdPlayed = false;
     _setCurrentVid();
 
+    // Associate events to their track handlers
+    player.off(['posterchange', 'play', 'ad-play', 'timeupdate',
+                'adstart', 'ads-ad-started', 'ima3-started']);
+
     // If the poster is set, track as though it had just changed
     if (player.poster()) {
         onPosterChange();
     }
 
-    // Associate events to their track handlers
-    player.off(['posterchange', 'play', 'ad-play', 'timeupdate',
-                'adstart', 'ads-ad-started', 'ima3-started']);
     player.on('posterchange', onPosterChange);
     player.on('play', onPlay);
     player.on('ad-play', onAdPlay);
