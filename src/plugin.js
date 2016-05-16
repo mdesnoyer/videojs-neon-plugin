@@ -348,20 +348,12 @@ const _extractVideoId = () => {
     return videoId;
 };
 
-// Handle autoplay event
-const onAutoplay = (playerEvent, eventDetails) => {
-    onPlay(playerEvent, eventDetails);
-};
-
 // Handle play event
 const onPlay = (playerEvent, eventDetails) => {
+
     if (_isInAdState()) {
         return;
     }
-
-    // Since player played, the autoplay listener is unneeded
-    player.off('timeupdate', onAutoplay);
-
     neon.currentVid = _extractVideoId();
     if (neon.playedVids.indexOf(neon.currentVid) < 0) {
         neon.playedVids.push(neon.currentVid);
@@ -603,14 +595,12 @@ const onPlayerReady = (player_, options) => {
     }
 
     // Associate events to their track handlers
+    player.off(['posterchange', 'play', 'ad-play', 'timeupdate', 'adstart', 'ads-ad-started', 'ima3-started']);
     player.on('posterchange', onPosterChange);
     player.on('play', onPlay);
     player.on('ad-play', onAdPlay);
     player.on('timeupdate', onTimeUpdate);
     player.on(['adstart', 'ads-ad-started', 'ima3-started'], onAdPlay);
-
-    // Use timeupdate for detecting autoplay
-    player.one('timeupdate', onAutoplay);
 };
 
 // Defer setup to video player's ready event.
