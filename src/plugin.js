@@ -151,7 +151,8 @@ const _getParentTracker = () => {
 // Get the url without url parameters or hash
 const _baseUrl = (url) => {
     const a = document.createElement('a');
-    a.href = url
+
+    a.href = url;
     return printf('%s//%s%s', a.protocol, a.hostname, a.pathname);
 };
 
@@ -161,11 +162,10 @@ const _trackerSendImageLoadedEventByUrl = (eventType, eventDetails, data) => {
             if (neon.options.dev.showConsoleLogging) {
                 console.info(printf('via parent:%s', eventType), data);
             }
-            neon.parentTracker.TrackerEvents.sendImageLoadedEventByUrl(
+            return neon.parentTracker.TrackerEvents.sendImageLoadedEventByUrl(
                 _baseUrl(eventDetails.images[0].url),
                 eventDetails.images[0].width,
                 eventDetails.images[0].height);
-            return true;
         } catch (err) {
             console.error('Fail to send event via parent tracker', err, eventType, data);
             return false;
@@ -182,15 +182,14 @@ const _trackerSendImageLoadedEventByUrl = (eventType, eventDetails, data) => {
 };
 
 const _trackerSendImageVisibleEventByUrl = (eventType, eventDetails, data, expired) => {
-    // @TODO need to look at sending as a list
+    // @TODO need to look at sending as a list; the parent tracker doesn't support this.
     if (_getParentTracker()) {
         try {
             if (neon.options.dev.showConsoleLogging) {
                 console.info(printf('via parent:%s', eventType), data);
             }
-            neon.parentTracker.TrackerEvents.sendImageVisibleEventByUrl(
+            return neon.parentTracker.TrackerEvents.sendImageVisibleEventByUrl(
                 _baseUrl(eventDetails.images[0].url));
-            return true;
         } catch (err) {
             console.error('Fail to send event via parent tracker', err, eventType, data);
             return false;
@@ -211,10 +210,9 @@ const _trackerSendImageClickEventByUrl = (eventType, eventDetails, data) => {
             if (neon.options.dev.showConsoleLogging) {
                 console.info(printf('via parent:%s', eventType), data);
             }
-            neon.parentTracker.TrackerEvents.sendImageClickEventByUrl(
+            return neon.parentTracker.TrackerEvents.sendImageClickEventByUrl(
                 data.vid,
                 _baseUrl(eventDetails.images[0].url));
-            return true;
         } catch (err) {
             console.error('Fail to send event via parent tracker', err, eventType, data);
             return false;
@@ -224,7 +222,6 @@ const _trackerSendImageClickEventByUrl = (eventType, eventDetails, data) => {
 
     if (timeout) {
         setTimeout(_sendToTracker, timeout, eventType, eventDetails);
-        console.info('click ' + timeout);
         return true;
     }
     return false;
@@ -262,7 +259,7 @@ const _sendToParentTracker = (eventType, eventDetails, data) => {
     return false;
 };
 
-// Run a ajax request for the log data
+// Try to send the event payload through the parent or direct communication
 const _sendToTracker = (eventType, eventDetails) => {
     const action = constants.eventCodeMap[eventType];
     let pcount;
@@ -296,7 +293,7 @@ const _sendToTracker = (eventType, eventDetails) => {
     ), _trackerAllowedParams);
 
     // Try to send via parent tracker but fallback to sending direct.
-    if(_sendToParentTracker(eventType, eventDetails, data)) {
+    if (_sendToParentTracker(eventType, eventDetails, data)) {
         return;
     }
     if (neon.options.dev.showConsoleLogging) {
@@ -527,7 +524,7 @@ const _setPublisherId = () => {
     if (parentId) {
         if (pluginId && parentId !== pluginId) {
             console.warn(printf(
-                'Publisher id do not match: parent:%s plugin:%s',
+                'Publisher ids do not match. Using parent id. parent:%s plugin:%s',
                 parentId,
                 pluginId));
         }
@@ -595,7 +592,8 @@ const onPlayerReady = (player_, options) => {
     }
 
     // Associate events to their track handlers
-    player.off(['posterchange', 'play', 'ad-play', 'timeupdate', 'adstart', 'ads-ad-started', 'ima3-started']);
+    player.off(['posterchange', 'play', 'ad-play', 'timeupdate',
+                'adstart', 'ads-ad-started', 'ima3-started']);
     player.on('posterchange', onPosterChange);
     player.on('play', onPlay);
     player.on('ad-play', onAdPlay);
