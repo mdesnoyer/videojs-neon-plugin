@@ -44,7 +44,7 @@ This is the simplest case. Get the script in whatever way you prefer and include
 <script src="//path/to/videojs-neon-plugin.min.js"></script>
 <script>
     var player = videojs('my-video');
-    player.neonPlugin();
+    player.neon();
 </script>
 ```
 
@@ -60,7 +60,7 @@ var videojs = require('video.js');
 // to a variable.
 require('videojs-neon-plugin');
 var player = videojs('my-video');
-player.neonPlugin();
+player.neon();
 ```
 
 ### Brightcloud Api

@@ -601,17 +601,17 @@ const onPlayerReady = (player_, options) => {
 };
 
 // Defer setup to video player's ready event.
-const neonTracker = function(options) {
+const neonPlugin = function(options) {
     this.ready(() => {
         onPlayerReady(this, videojs.mergeOptions(defaults, options));
     });
 };
 
 // Register the plugin with video.js
-videojs.plugin('neon', neonTracker);
+videojs.plugin('neon', neonPlugin);
 
 // Include the version number
-neonTracker.VERSION = '0.0.1';
+neonPlugin.VERSION = '0.0.1';
 
 // Allow simple es6 import
-export default neonTracker;
+export default neonPlugin;
