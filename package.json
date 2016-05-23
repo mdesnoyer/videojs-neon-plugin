@@ -1,5 +1,5 @@
 {
-  "name": "@neon/videojs-neon-tracker",
+  "name": "@neon/videojs-neon-plugin",
   "version": "0.0.1",
   "description": "Brightcove player event tracking for the Neon API",
   "main": "es5/plugin.js",
@@ -15,9 +15,9 @@
     "build": "mkdir dist; mkdir test/dist; npm-run-all -p build:*",
     "build:js": "npm-run-all build:js:babel build:js:browserify build:js:bannerize build:js:uglify",
     "build:js:babel": "babel src -d es5",
-    "build:js:bannerize": "bannerize dist/videojs-neon-tracker.js --banner=scripts/banner.ejs",
-    "build:js:browserify": "browserify . -s videojs-neon-tracker -o dist/videojs-neon-tracker.js",
-    "build:js:uglify": "uglifyjs dist/videojs-neon-tracker.js --comments --mangle --compress -o dist/videojs-neon-tracker.min.js",
+    "build:js:bannerize": "bannerize dist/videojs-neon-plugin.js --banner=scripts/banner.ejs",
+    "build:js:browserify": "browserify . -s videojs-neon-plugin -o dist/videojs-neon-plugin.js",
+    "build:js:uglify": "uglifyjs dist/videojs-neon-plugin.js --comments --mangle --compress -o dist/videojs-neon-plugin.min.js",
     "build:test": "babel-node scripts/build-test.js",
     "clean": "rimraf dist test/dist es5 && mkdirp dist test/dist es5",
     "start": "babel-node scripts/server.js",
@@ -47,7 +47,7 @@
     "video.js": "global:videojs"
   },
   "videojs-plugin": {
-    "script": "dist/videojs-neon-tracker.min.js"
+    "script": "dist/videojs-neon-plugin.min.js"
   },
   "vjsstandard": {
     "ignore": [
