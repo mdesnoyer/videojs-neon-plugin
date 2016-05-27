@@ -593,11 +593,15 @@ const onPlayerReady = (player_, options) => {
         onPosterChange();
     }
 
+    // Associate events to their track handlers
+    player.off('posterchange', onPosterChange);
+    player.off('play', onPlay);
+    player.off('timeupdate', onTimeUpdate);
+    player.off(['ad-play', 'adstart', 'ads-ad-started', 'ima3-started'], onAdPlay);
     player.on('posterchange', onPosterChange);
     player.on('play', onPlay);
-    player.on('ad-play', onAdPlay);
     player.on('timeupdate', onTimeUpdate);
-    player.on(['adstart', 'ads-ad-started', 'ima3-started'], onAdPlay);
+    player.on(['ad-play', 'adstart', 'ads-ad-started', 'ima3-started'], onAdPlay);
 };
 
 // Defer setup to video player's ready event.
