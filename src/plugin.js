@@ -584,10 +584,6 @@ const onPlayerReady = (player_, options) => {
     neon.hasAdPlayed = false;
     _setCurrentVid();
 
-    // Associate events to their track handlers
-    player.off(['posterchange', 'play', 'ad-play', 'timeupdate',
-                'adstart', 'ads-ad-started', 'ima3-started']);
-
     // If the poster is set, track as though it had just changed
     if (player.poster()) {
         onPosterChange();
@@ -615,7 +611,7 @@ const neonPlugin = function(options) {
 videojs.plugin('neon', neonPlugin);
 
 // Include the version number
-neonPlugin.VERSION = '0.0.1';
+neonPlugin.VERSION = '0.0.2';
 
 // Allow simple es6 import
 export default neonPlugin;

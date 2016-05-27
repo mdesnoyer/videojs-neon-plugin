@@ -1,6 +1,6 @@
 {
   "name": "@neon/videojs-neon-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Brightcove player event tracking for the Neon API",
   "main": "es5/plugin.js",
   "private": true,
